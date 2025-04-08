@@ -98,8 +98,3 @@ if generate_button_clicked:
                         view.st.session_state["last_docx_data"],
                         key="download_button_restored",
                     )
-
-
-# --- Footer or other UI elements can be added here via view functions ---
-# Example:
-# view.display_footer()

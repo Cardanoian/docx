@@ -7,7 +7,6 @@ import re
 
 from docx import Document
 from docx.shared import Pt
-from bs4 import BeautifulSoup
 
 from utils import get_api_key
 
@@ -120,125 +119,6 @@ def generate_content_from_gemini(template_text, reference_text, instructions):
     except Exception as e:
         print(f"Gemini API 호출 오류: {e}")  # Log error
         yield f"\n\n오류 발생: 콘텐츠 생성 중 문제가 발생했습니다. ({e})"  # Yield error message
-
-
-# TODO: html_to_docx와 markdown_to_docx 중 더 나은 것 하나만 남기기
-def convert_html_to_docx(html_content):
-    """HTML 내용을 docx 파일로 변환합니다."""
-    try:
-        # BeautifulSoup을 사용하여 HTML 파싱
-        soup = BeautifulSoup(html_content, "html.parser")
-        doc = Document()
-
-        # 기본 폰트 설정 (문서 전체에 적용)
-        style = doc.styles["Normal"]
-        font = style.font
-        font.name = SYSTEM_FONT  # 운영체제에 맞는 폰트 사용
-        font.size = Pt(11)
-
-        # 제목 추출 (있는 경우)
-        title = soup.find("h1")
-        if title:
-            doc.add_heading(title.get_text(), level=1)
-
-        # 모든 요소 처리
-        for element in soup.body.children:
-            if element.name == "p":
-                # 단락 추가
-                text = element.get_text()
-                if text.strip():  # 빈 텍스트가 아닌 경우에만 처리
-                    p = doc.add_paragraph()
-                    # 텍스트가 볼드인지 확인
-                    if element.find("strong"):
-                        run = p.add_run(text)
-                        run.bold = True
-                    else:
-                        p.add_run(text)
-
-            elif element.name == "h1":
-                # 이미 처리했으므로 스킵
-                continue
-
-            elif element.name == "h2":
-                doc.add_heading(element.get_text(), level=2)
-
-            elif element.name == "h3":
-                doc.add_heading(element.get_text(), level=3)
-
-            elif element.name == "ul":
-                # 불렛 리스트 처리
-                for li in element.find_all("li"):
-                    p = doc.add_paragraph(li.get_text(), style="List Bullet")
-                    # 리스트에도 폰트 적용
-                    for run in p.runs:
-                        run.font.name = SYSTEM_FONT
-
-            elif element.name == "ol":
-                # 번호 리스트 처리
-                for li in element.find_all("li"):
-                    p = doc.add_paragraph(li.get_text(), style="List Number")
-                    for run in p.runs:
-                        run.font.name = SYSTEM_FONT
-
-            elif element.name == "table":
-                # 테이블 처리
-                rows = element.find_all("tr")
-                if rows:
-                    num_cols = max(len(row.find_all(["td", "th"])) for row in rows)
-                    table = doc.add_table(rows=len(rows), cols=num_cols)
-                    table.style = "Table Grid"
-
-                    for i, row in enumerate(rows):
-                        cells = row.find_all(["td", "th"])
-                        for j, cell in enumerate(cells):
-                            if j < num_cols:  # 인덱스 범위 확인
-                                cell_text = cell.get_text(separator=" ", strip=True)
-                                table.cell(i, j).text = cell_text
-                                # 폰트 스타일 적용
-                                for paragraph in table.cell(i, j).paragraphs:
-                                    for run in paragraph.runs:
-                                        run.font.name = SYSTEM_FONT
-                                # <th>인 경우 굵게
-                                if cell.name == "th":
-                                    for paragraph in table.cell(i, j).paragraphs:
-                                        for run in paragraph.runs:
-                                            run.bold = True
-
-        # 결과 저장
-        buffer = io.BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
-        return buffer
-
-    except Exception as e:
-        print(f"DOCX 변환 오류: {e}")
-
-        # 긴급 폴백: 간단한 텍스트만 추출해서 문서 생성
-        try:
-            doc = Document()
-            style = doc.styles["Normal"]
-            font = style.font
-            font.name = SYSTEM_FONT
-            font.size = Pt(11)
-
-            # HTML 태그 제거 후 텍스트만 추출
-            text_content = soup.get_text()
-            paragraphs = text_content.split("\n")
-
-            for para in paragraphs:
-                if para.strip():  # 빈 줄 제외
-                    p = doc.add_paragraph(para.strip())
-                    for run in p.runs:
-                        run.font.name = SYSTEM_FONT
-
-            buffer = io.BytesIO()
-            doc.save(buffer)
-            buffer.seek(0)
-            return buffer
-
-        except Exception as e2:
-            print(f"긴급 폴백 DOCX 변환도 실패: {e2}")
-            return None
 
 
 def markdown_to_docx(markdown_text: str) -> io.BytesIO:

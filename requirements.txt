@@ -4,4 +4,3 @@ streamlit-extras
 markdown
 PyPDF2
 python-docx
-beautifulsoup4
