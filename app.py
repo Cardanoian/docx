@@ -4,11 +4,12 @@ import time  # For small delay in streaming view
 # Import modules from the project
 import model
 import view
-import utils
+
+# import utils
 
 # --- 초기 설정 ---
 # Load environment variables (though model might load it too, ensures it's done early)
-utils.load_environment_variables()
+# utils.load_environment_variables()
 
 # --- UI 랜더링 ---
 view.display_header()

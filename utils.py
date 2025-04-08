@@ -1,10 +1,11 @@
 import os
-from dotenv import load_dotenv
+
+# from dotenv import load_dotenv
 
 
-def load_environment_variables():
-    """.env 파일에서 환경 변수를 로드합니다."""
-    load_dotenv()
+# def load_environment_variables():
+#     """.env 파일에서 환경 변수를 로드합니다."""
+#     load_dotenv()
 
 
 def get_api_key():

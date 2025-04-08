@@ -1,7 +1,6 @@
 import os
 import google.generativeai as genai
 import PyPDF2
-import utils  # utils.py import
 import io
 import platform
 from docx import Document
@@ -9,9 +8,11 @@ from docx.shared import Pt
 from bs4 import BeautifulSoup
 import html2docx
 
+from utils import get_api_key
+
 # --- Initialization ---
-utils.load_environment_variables()  # Load env vars first
-API_KEY = utils.get_api_key()
+# utils.load_environment_variables()  # Load env vars first
+API_KEY = get_api_key()
 
 if not API_KEY:
     raise ValueError("GEMINI_API_KEY가 .env 파일에 설정되지 않았습니다.")
