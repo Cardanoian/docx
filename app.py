@@ -15,6 +15,10 @@ view.display_footer()
 
 # --- 컨트롤러 로직 ---
 if generate_button_clicked:
+    # 새 결과 생성 시 이전 세션 값 초기화
+    view.st.session_state.pop("last_result_md", None)
+    view.st.session_state.pop("last_docx_data", None)
+
     # 1. 입력 유효성 검사
     if not uploaded_template_file:
         view.display_warning("PDF 서식 파일을 업로드하세요.")
@@ -75,17 +79,22 @@ if generate_button_clicked:
                     view.display_warning("결과를 DOCX로 변환하는 데 실패했습니다.")
 
             # 결과 복원
-            if "last_result_md" in view.st.session_state:
+            if (
+                "last_result_md" in view.st.session_state
+                and not generate_button_clicked
+            ):
                 prev_html = markdown.markdown(
                     view.st.session_state["last_result_md"],
                     extensions=["tables", "fenced_code"],
                 )
-                _, result_placeholder = view.display_results_area()
+                results_container, result_placeholder = view.display_results_area()
                 view.display_final_result(result_placeholder, prev_html)
 
                 if "last_docx_data" in view.st.session_state:
                     view.display_download_button(
-                        _, view.st.session_state["last_docx_data"]
+                        results_container,
+                        view.st.session_state["last_docx_data"],
+                        key="download_button_restored",
                     )
 
 
