@@ -93,4 +93,4 @@ def display_spinner(message="처리 중..."):
 
 
 def display_footer():
-    return st.text("04.08.11.17")
+    return st.text("04.08.11.20")
