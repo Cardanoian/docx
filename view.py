@@ -71,7 +71,6 @@ def display_download_button(container, docx_data, filename="generated_report.doc
             label="📄 DOCX로 다운로드",
             data=docx_data,
             file_name=filename,
-            # mime="application/docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # 정확한 MIME 타입
             key="download_button",
         )
