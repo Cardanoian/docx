@@ -90,3 +90,7 @@ def display_warning(message):
 def display_spinner(message="처리 중..."):
     """스피너(로딩 표시) 컨텍스트를 반환합니다."""
     return st.spinner(message)
+
+
+def display_footer():
+    return st.text("04.08.10.43")
