@@ -3,6 +3,7 @@ import google.generativeai as genai
 import PyPDF2
 import utils  # utils.py import
 import io
+import platform
 from docx import Document
 from docx.shared import Pt
 from bs4 import BeautifulSoup
@@ -32,6 +33,21 @@ llm_model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",  # or "gemini-pro" if preferred
     generation_config=GENERATION_CONFIG,
 )
+
+
+def get_system_font():
+    system = platform.system()
+    if system == "Darwin":  # macOS
+        return "AppleGothic"
+    elif system == "Linux":
+        return "NanumGothic"
+    elif system == "Windows":
+        return "Malgun Gothic"
+    else:
+        return "Arial"  # 기본 폰트
+
+
+SYSTEM_FONT = get_system_font()
 
 # --- Font Path Setup ---
 # model.py 파일이 위치한 디렉토리를 기준으로 fonts 폴더 경로 설정
@@ -153,12 +169,16 @@ def convert_html_to_docx(html_content):
             # 기본 폰트 설정
             style = doc.styles["Normal"]
             font = style.font
-            font.name = "Malgun Gothic"  # 맑은 고딕 (기본 한글 폰트)
+            # 운영체제에 맞는 폰트 사용
+            font.name = SYSTEM_FONT
             font.size = Pt(11)
 
             # 텍스트 추출 및 문서에 추가
             for p in soup.find_all("p"):
-                doc.add_paragraph(p.get_text())
+                paragraph = doc.add_paragraph(p.get_text())
+                # 각 단락에도 폰트 적용
+                for run in paragraph.runs:
+                    run.font.name = SYSTEM_FONT
 
             # 테이블 추가
             for table in soup.find_all("table"):
@@ -174,6 +194,10 @@ def convert_html_to_docx(html_content):
                         for j, cell in enumerate(cells):
                             if j < len(t.rows[i].cells):  # 인덱스 범위 확인
                                 t.rows[i].cells[j].text = cell.get_text().strip()
+                                # 테이블 셀에도 폰트 적용
+                                for paragraph in t.rows[i].cells[j].paragraphs:
+                                    for run in paragraph.runs:
+                                        run.font.name = SYSTEM_FONT
 
             # 결과 저장
             buffer = io.BytesIO()
