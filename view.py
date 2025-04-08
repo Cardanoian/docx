@@ -77,20 +77,6 @@ def display_download_button(container, docx_data, filename="generated_report.doc
         )
 
 
-# TODO: 예시받기. 삭제할 것.
-def display_txt_download_button(container, text_data, filename="result.txt"):
-    """TXT 다운로드 버튼을 표시합니다."""
-    download_container = container.container()
-    with download_container:
-        st.download_button(
-            label="📄 TXT로 다운로드",
-            data=text_data,
-            file_name=filename,
-            mime="text/plain",
-            key="txt_download_button",
-        )
-
-
 def display_error(message):
     """에러 메시지를 표시합니다."""
     st.error(message)
@@ -106,5 +92,6 @@ def display_spinner(message="처리 중..."):
     return st.spinner(message)
 
 
+# TODO: 삭제하기!!
 def display_footer():
-    return st.text("04.08.11.38")
+    return st.text("04.08.11.52")

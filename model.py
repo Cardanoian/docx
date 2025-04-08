@@ -3,6 +3,8 @@ import google.generativeai as genai
 import PyPDF2
 import io
 import platform
+import re
+
 from docx import Document
 from docx.shared import Pt
 from bs4 import BeautifulSoup
@@ -120,6 +122,7 @@ def generate_content_from_gemini(template_text, reference_text, instructions):
         yield f"\n\n오류 발생: 콘텐츠 생성 중 문제가 발생했습니다. ({e})"  # Yield error message
 
 
+# TODO: html_to_docx와 markdown_to_docx 중 더 나은 것 하나만 남기기
 def convert_html_to_docx(html_content):
     """HTML 내용을 docx 파일로 변환합니다."""
     try:
@@ -236,3 +239,124 @@ def convert_html_to_docx(html_content):
         except Exception as e2:
             print(f"긴급 폴백 DOCX 변환도 실패: {e2}")
             return None
+
+
+def markdown_to_docx(markdown_text: str) -> io.BytesIO:
+    """마크다운 텍스트를 docx 문서로 변환하여 BytesIO로 반환합니다."""
+    doc = Document()
+
+    # 기본 스타일 설정
+    style = doc.styles["Normal"]
+    font = style.font
+    font.name = "Malgun Gothic"  # 시스템에 맞게 조정 가능
+    font.size = Pt(11)
+
+    lines = markdown_text.strip().splitlines()
+    table_mode = False
+    table_rows = []
+    tables = []
+
+    def parse_inline_styles(paragraph, text):
+        """텍스트 내 인라인 스타일 처리: **bold**, *italic*, ***both***"""
+        pattern = r"(\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*)"
+        parts = re.split(pattern, text)
+        for part in parts:
+            run = paragraph.add_run(re.sub(r"[*]", "", part))  # 기본 텍스트
+            if part.startswith("***") and part.endswith("***"):
+                run.bold = True
+                run.italic = True
+            elif part.startswith("**") and part.endswith("**"):
+                run.bold = True
+            elif part.startswith("*") and part.endswith("*"):
+                run.italic = True
+
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+
+        # 제목
+        if line.startswith("#"):
+            level = min(line.count("#"), 4)
+            text = line.lstrip("#").strip()
+            doc.add_heading(text, level=level)
+            table_mode = False
+
+        # 리스트
+        elif line.startswith(("- ", "* ")):
+            doc.add_paragraph(line[2:].strip(), style="List Bullet")
+            table_mode = False
+
+        elif re.match(r"^\d+\.\s", line):
+            doc.add_paragraph(re.sub(r"^\d+\.\s", "", line), style="List Number")
+            table_mode = False
+
+        # 테이블 감지
+        elif "|" in line:
+            row = [cell.strip() for cell in line.split("|") if cell.strip()]
+            table_rows.append(row)
+
+            # 다음 줄이 헤더 구분줄(---)인지 확인
+            if i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                if re.match(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$", next_line):
+                    i += 1  # 구분선은 건너뛰기
+                    table_rows.append("__HEADER__")  # 마커로 표시
+
+        else:
+            # 이전 테이블 처리
+            if table_rows:
+                header_style = []
+                if "__HEADER__" in table_rows:
+                    header_index = table_rows.index("__HEADER__")
+                    headers = table_rows[header_index - 1]
+                    data_rows = table_rows[header_index + 1 :]
+                    all_rows = [headers] + data_rows
+                    header_style = [True] + [False] * len(data_rows)
+                else:
+                    all_rows = table_rows
+                    header_style = [False] * len(all_rows)
+
+                num_rows = len(all_rows)
+                num_cols = max(len(row) for row in all_rows)
+                table = doc.add_table(rows=num_rows, cols=num_cols)
+                table.style = "Table Grid"
+
+                for r, row in enumerate(all_rows):
+                    for c, cell in enumerate(row):
+                        cell_text = cell
+                        cell_obj = table.cell(r, c)
+                        cell_obj.text = cell_text
+                        for run in cell_obj.paragraphs[0].runs:
+                            run.font.name = "Malgun Gothic"
+                            if header_style[r]:
+                                run.bold = True
+                table_rows = []
+
+            # 일반 문단
+            p = doc.add_paragraph()
+            parse_inline_styles(p, line)
+
+        i += 1
+
+    # 혹시 마지막 줄이 테이블이면 처리
+    if table_rows:
+        all_rows = table_rows
+        num_rows = len(all_rows)
+        num_cols = max(len(row) for row in all_rows)
+        table = doc.add_table(rows=num_rows, cols=num_cols)
+        table.style = "Table Grid"
+        for r, row in enumerate(all_rows):
+            for c, cell in enumerate(row):
+                cell_obj = table.cell(r, c)
+                cell_obj.text = cell
+                for run in cell_obj.paragraphs[0].runs:
+                    run.font.name = "Malgun Gothic"
+
+    # 결과 저장
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
