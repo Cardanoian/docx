@@ -5,8 +5,6 @@ import time  # For small delay in streaming view
 import model
 import view
 
-# import utils
-
 # --- 초기 설정 ---
 # Load environment variables (though model might load it too, ensures it's done early)
 # utils.load_environment_variables()
@@ -78,12 +76,11 @@ if generate_button_clicked:
                 docx_data = model.convert_html_to_docx(final_html)
 
                 if docx_data:
-                    # Display download button inside the container
+                    # 결과는 유지하면서 다운로드 버튼 표시 (별도 컨테이너에)
                     view.display_download_button(results_container, docx_data)
                 else:
-                    # Display warning if DOCX conversion failed, inside the container
-                    with results_container:
-                        view.display_warning("결과를 DOCX로 변환하는 데 실패했습니다.")
+                    # Display warning if DOCX conversion failed
+                    view.display_warning("결과를 DOCX로 변환하는 데 실패했습니다.")
             elif error_occurred:
                 # Display the error message permanently if generation failed
                 view.display_final_result(results_placeholder, full_response_md)

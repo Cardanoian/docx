@@ -5,4 +5,3 @@ markdown
 PyPDF2
 python-docx
 beautifulsoup4
-html2docx

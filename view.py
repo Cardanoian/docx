@@ -63,13 +63,16 @@ def display_final_result(placeholder, html_content):
 
 
 def display_download_button(container, docx_data, filename="generated_report.docx"):
-    """DOCX 다운로드 버튼을 지정된 컨테이너 내에 표시합니다."""
-    with container:  # Ensure button is inside the results container
+    """DOCX 다운로드 버튼을 표시합니다. 기존 컨테이너의 내용을 유지합니다."""
+    # 새 컨테이너를 생성하여 다운로드 버튼만 표시
+    download_container = st.container()
+    with download_container:
         st.download_button(
             label="📄 DOCX로 다운로드",
             data=docx_data,
             file_name=filename,
-            mime="application/docx",
+            # mime="application/docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # 정확한 MIME 타입
             key="download_button",
         )
 

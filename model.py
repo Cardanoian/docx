@@ -6,7 +6,6 @@ import platform
 from docx import Document
 from docx.shared import Pt
 from bs4 import BeautifulSoup
-import html2docx
 
 from utils import get_api_key
 
@@ -36,6 +35,8 @@ llm_model = genai.GenerativeModel(
 )
 
 
+# --- Font Path Setup ---
+# 운영체제별 한글 폰트 설정
 def get_system_font():
     system = platform.system()
     if system == "Darwin":  # macOS
@@ -50,39 +51,9 @@ def get_system_font():
 
 SYSTEM_FONT = get_system_font()
 
-# --- Font Path Setup ---
 # model.py 파일이 위치한 디렉토리를 기준으로 fonts 폴더 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_ROOT = os.path.join(BASE_DIR, "fonts")
-# 사용할 폰트 파일 이름 (fonts 폴더 안에 있는 실제 파일 이름과 일치해야 함)
-FONT_FILENAME = "NanumGothic.ttf"
-FONT_PATH = os.path.join(FONT_ROOT, FONT_FILENAME)
-
-
-# --- Resource Fetching Callback ---
-def fetch_resources(uri, rel):
-    """
-    xhtml2pdf가 로컬 리소스(폰트 등)를 찾을 수 있도록 경로를 변환하는 콜백 함수.
-    uri: CSS 등에서 참조하는 경로 (예: 'fonts/NanumGothicRegular.ttf')
-    """
-    # CSS의 url() 경로를 실제 파일 시스템 경로로 변환
-    # 여기서는 CSS의 경로가 'fonts/...' 형태라고 가정
-    if uri.startswith("fonts/"):
-        path = os.path.join(FONT_ROOT, uri[len("fonts/") :])
-    else:
-        # 다른 종류의 로컬 리소스 경로 처리가 필요하면 여기에 추가
-        # 기본적인 처리: BASE_DIR 기준으로 경로 해석 시도
-        path = os.path.join(BASE_DIR, uri)
-
-    path = os.path.normpath(path)
-    print(f"Fetching resource: URI='{uri}', Mapped Path='{path}'")  # 디버깅용 출력
-    # 파일 존재 여부 확인 (선택적이지만 권장)
-    if not os.path.isfile(path):
-        print(f"Error: Resource file not found at {path}")
-        # 파일을 찾지 못했을 때의 처리 (예: 에러 발생 또는 None 반환)
-        # 여기서는 일단 경로를 반환하되, 오류는 pisa 내부에서 처리될 수 있음
-        # raise FileNotFoundError(f"Resource not found: {path}") # 필요시 에러 발생
-    return path
 
 
 # --- Core Logic Functions ---
@@ -152,59 +123,118 @@ def generate_content_from_gemini(template_text, reference_text, instructions):
 
 def convert_html_to_docx(html_content):
     """HTML 내용을 docx 파일로 변환합니다."""
-
     try:
-        # HTML2DOCX 라이브러리 사용
-        buffer = io.BytesIO()
-        buffer = html2docx(html_content)
-        buffer.seek(0)
-        return buffer
-    except Exception as e:
-        print(f"HTML2DOCX 변환 오류: {e}")
+        # BeautifulSoup을 사용하여 HTML 파싱
+        soup = BeautifulSoup(html_content, "html.parser")
+        doc = Document()
 
-        try:
-            # 대안: BeautifulSoup을 사용한 수동 변환
-            soup = BeautifulSoup(html_content, "html.parser")
-            doc = Document()
+        # 기본 폰트 설정 (문서 전체에 적용)
+        style = doc.styles["Normal"]
+        font = style.font
+        font.name = SYSTEM_FONT  # 운영체제에 맞는 폰트 사용
+        font.size = Pt(11)
 
-            # 기본 폰트 설정
-            style = doc.styles["Normal"]
-            font = style.font
-            # 운영체제에 맞는 폰트 사용
-            font.name = SYSTEM_FONT
-            font.size = Pt(11)
+        # 제목 추출 (있는 경우)
+        title = soup.find("h1")
+        if title:
+            doc.add_heading(title.get_text(), level=1)
 
-            # 텍스트 추출 및 문서에 추가
-            for p in soup.find_all("p"):
-                paragraph = doc.add_paragraph(p.get_text())
-                # 각 단락에도 폰트 적용
-                for run in paragraph.runs:
-                    run.font.name = SYSTEM_FONT
+        # 모든 요소 처리
+        for element in soup.body.children:
+            if element.name == "p":
+                # 단락 추가
+                text = element.get_text()
+                if text.strip():  # 빈 텍스트가 아닌 경우에만 처리
+                    p = doc.add_paragraph()
+                    # 텍스트가 볼드인지 확인
+                    if element.find("strong"):
+                        run = p.add_run(text)
+                        run.bold = True
+                    else:
+                        p.add_run(text)
 
-            # 테이블 추가
-            for table in soup.find_all("table"):
-                rows = table.find_all("tr")
+            elif element.name == "h1":
+                # 이미 처리했으므로 스킵
+                continue
+
+            elif element.name == "h2":
+                doc.add_heading(element.get_text(), level=2)
+
+            elif element.name == "h3":
+                doc.add_heading(element.get_text(), level=3)
+
+            elif element.name == "ul":
+                # 불렛 리스트 처리
+                for li in element.find_all("li"):
+                    p = doc.add_paragraph(li.get_text(), style="List Bullet")
+                    # 리스트에도 폰트 적용
+                    for run in p.runs:
+                        run.font.name = SYSTEM_FONT
+
+            elif element.name == "ol":
+                # 번호 리스트 처리
+                for li in element.find_all("li"):
+                    p = doc.add_paragraph(li.get_text(), style="List Number")
+                    for run in p.runs:
+                        run.font.name = SYSTEM_FONT
+
+            elif element.name == "table":
+                # 테이블 처리
+                rows = element.find_all("tr")
                 if rows:
-                    t = doc.add_table(
-                        rows=len(rows), cols=len(rows[0].find_all(["td", "th"]))
-                    )
-                    t.style = "Table Grid"
+                    num_cols = max(len(row.find_all(["td", "th"])) for row in rows)
+                    table = doc.add_table(rows=len(rows), cols=num_cols)
+                    table.style = "Table Grid"
 
                     for i, row in enumerate(rows):
                         cells = row.find_all(["td", "th"])
                         for j, cell in enumerate(cells):
-                            if j < len(t.rows[i].cells):  # 인덱스 범위 확인
-                                t.rows[i].cells[j].text = cell.get_text().strip()
+                            if j < num_cols:  # 인덱스 범위 확인
+                                text = cell.get_text().strip()
+                                table.cell(i, j).text = text
                                 # 테이블 셀에도 폰트 적용
-                                for paragraph in t.rows[i].cells[j].paragraphs:
+                                for paragraph in table.cell(i, j).paragraphs:
                                     for run in paragraph.runs:
                                         run.font.name = SYSTEM_FONT
 
-            # 결과 저장
+                                # th인 경우 볼드 처리
+                                if cell.name == "th":
+                                    for paragraph in table.cell(i, j).paragraphs:
+                                        for run in paragraph.runs:
+                                            run.bold = True
+
+        # 결과 저장
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        return buffer
+
+    except Exception as e:
+        print(f"DOCX 변환 오류: {e}")
+
+        # 긴급 폴백: 간단한 텍스트만 추출해서 문서 생성
+        try:
+            doc = Document()
+            style = doc.styles["Normal"]
+            font = style.font
+            font.name = SYSTEM_FONT
+            font.size = Pt(11)
+
+            # HTML 태그 제거 후 텍스트만 추출
+            text_content = soup.get_text()
+            paragraphs = text_content.split("\n")
+
+            for para in paragraphs:
+                if para.strip():  # 빈 줄 제외
+                    p = doc.add_paragraph(para.strip())
+                    for run in p.runs:
+                        run.font.name = SYSTEM_FONT
+
             buffer = io.BytesIO()
             doc.save(buffer)
             buffer.seek(0)
             return buffer
-        except Exception as e:
-            print(f"수동 DOCX 변환 오류: {e}")
+
+        except Exception as e2:
+            print(f"긴급 폴백 DOCX 변환도 실패: {e2}")
             return None
