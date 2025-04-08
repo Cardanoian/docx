@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup
 from utils import get_api_key
 
 # --- Initialization ---
-# utils.load_environment_variables()  # Load env vars first
 API_KEY = get_api_key()
 
 if not API_KEY:
@@ -190,14 +189,13 @@ def convert_html_to_docx(html_content):
                         cells = row.find_all(["td", "th"])
                         for j, cell in enumerate(cells):
                             if j < num_cols:  # 인덱스 범위 확인
-                                text = cell.get_text().strip()
-                                table.cell(i, j).text = text
-                                # 테이블 셀에도 폰트 적용
+                                cell_text = cell.get_text(separator=" ", strip=True)
+                                table.cell(i, j).text = cell_text
+                                # 폰트 스타일 적용
                                 for paragraph in table.cell(i, j).paragraphs:
                                     for run in paragraph.runs:
                                         run.font.name = SYSTEM_FONT
-
-                                # th인 경우 볼드 처리
+                                # <th>인 경우 굵게
                                 if cell.name == "th":
                                     for paragraph in table.cell(i, j).paragraphs:
                                         for run in paragraph.runs:
