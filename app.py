@@ -75,6 +75,16 @@ if generate_button_clicked:
                 if docx_data:
                     view.st.session_state["last_docx_data"] = docx_data
                     view.display_download_button(results_container, docx_data)
+                    # 결과는 유지하면서 다운로드 버튼 표시
+                    view.st.session_state["last_docx_data"] = docx_data
+                    view.st.session_state["last_result_txt"] = full_response_md
+
+                    view.display_download_button(
+                        results_container, docx_data, key="download_button_docx"
+                    )
+                    view.display_txt_download_button(
+                        results_container, full_response_md, key="download_button_txt"
+                    )
                 else:
                     view.display_warning("결과를 DOCX로 변환하는 데 실패했습니다.")
 
