@@ -5,7 +5,7 @@ from streamlit_extras.colored_header import colored_header
 def display_header():
     """페이지 상단의 헤더를 표시합니다."""
     colored_header(
-        label="계획서 보고서 작성 AI (MVC)",  # Title updated slightly
+        label="계획서 보고서 작성 AI",  # Title updated slightly
         description="PDF 서식 및 참고 파일을 업로드하고 지시사항을 입력하면 계획서 또는 보고서를 작성해줍니다.",
         color_name="blue-70",
     )
