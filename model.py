@@ -4,6 +4,7 @@ import PyPDF2
 import io
 import platform
 import re
+from typing import Tuple
 
 from docx import Document
 from docx.shared import Pt
@@ -121,7 +122,7 @@ def generate_content_from_gemini(template_text, reference_text, instructions):
         yield f"\n\n오류 발생: 콘텐츠 생성 중 문제가 발생했습니다. ({e})"  # Yield error message
 
 
-def markdown_to_docx(markdown_text: str) -> io.BytesIO:
+def markdown_to_docx(markdown_text: str) -> Tuple[str, io.BytesIO]:
     """마크다운 텍스트를 docx 문서로 변환하여 BytesIO로 반환합니다."""
     doc = Document()
 
@@ -135,6 +136,7 @@ def markdown_to_docx(markdown_text: str) -> io.BytesIO:
     table_mode = False
     table_rows = []
     tables = []
+    title = ""
 
     def parse_inline_styles(paragraph, text):
         """텍스트 내 인라인 스타일 처리: **bold**, *italic*, ***both***"""
@@ -219,6 +221,8 @@ def markdown_to_docx(markdown_text: str) -> io.BytesIO:
             p = doc.add_paragraph()
             parse_inline_styles(p, line)
 
+        if not title:
+            title = get_title(line)
         i += 1
 
     # 혹시 마지막 줄이 테이블이면 처리
@@ -239,4 +243,38 @@ def markdown_to_docx(markdown_text: str) -> io.BytesIO:
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
-    return buffer
+    return (title, buffer)
+
+
+def get_title(line):
+    match = re.match(r"^#+\s*(.*)", line)  # Heading tag
+    if match:
+        return match.group(1).strip()
+
+    match = re.match(r"^-+\s*(.*)", line)  # Unordered list tag
+    if match:
+        return match.group(1).strip()
+
+    match = re.match(r"^\d+\.\s*(.*)", line)  # Ordered list tag
+    if match:
+        return match.group(1).strip()
+
+    match = re.match(r"^>\s*(.*)", line)  # Blockquote tag
+    if match:
+        return match.group(1).strip()
+
+    match = re.match(r"^`{3}.*", line)  # Code block start
+    if match:
+        return ""  # Code block 시작 줄은 텍스트로 간주하지 않음
+
+    match = re.match(r"^\|.*\|$", line)  # Table row
+    if match:
+        # 테이블 행 내부의 텍스트를 추출 (간단하게 처리)
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        return " ".join(cells)
+
+    match = re.match(r"^[*_]{1,3}(.*?)[*_]{1,3}$", line)  # Bold, italic
+    if match:
+        return match.group(1).strip()
+
+    return line.strip()
