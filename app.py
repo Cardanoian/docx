@@ -11,7 +11,7 @@ view.display_header()
 uploaded_template_file, uploaded_reference_file = view.display_file_uploaders()
 user_instructions = view.display_instructions_input()
 generate_button_clicked = view.display_generate_button()
-view.display_footer()
+view.display_faq()
 
 # --- 컨트롤러 로직 ---
 if generate_button_clicked:
