@@ -31,7 +31,7 @@ GENERATION_CONFIG = {
 # --- Model Instantiation ---
 # Using a recommended model, adjust if needed
 llm_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",  # or "gemini-pro" if preferred
+    model_name="gemini-2.5-flash",  # or "gemini-pro" if preferred
     generation_config=GENERATION_CONFIG,
 )
 
